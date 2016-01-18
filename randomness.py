@@ -48,4 +48,29 @@ class WanderingMonsterTable(object):
                 l = self.rare
             else:
                 l = self.very_rare
+            if not l:
+                l = self.common
         return random.choice(l)
+
+class Gradient(object):
+
+    @classmethod
+    def gradient(cls, go_from, go_to, length):
+        """Yields a gradient from set1 to set2 of a given length."""
+        for i in range(length):
+            chance = float(i)/length
+            if random.random() <= chance:
+                c = go_from
+            else:
+                c = go_to
+            yield random.choice(c)
+
+    @classmethod
+    def rainbow_gradient(cls, go_from, go_to, length):
+        "Goes from go_from to go_to and back again."
+        l1 = length / 2
+        l2 = length - l1
+        for x in cls.gradient(go_from, go_to, l1):
+            yield x
+        for x in cls.gradient(go_to, go_from, l2):
+            yield x

@@ -6,28 +6,76 @@ import json
 import random
 import sys
 import unicodedata
-from randomness import WanderingMonsterTable, COMMON, UNCOMMON, RARE, VERY_RARE
+from randomness import Gradient, WanderingMonsterTable, COMMON, UNCOMMON, RARE, VERY_RARE
 
 import data
 
 CUSTOM_ALPHABETS = {
     "Dice": u"\N{Die Face-1}\N{Die Face-2}\N{Die Face-3}\N{Die Face-4}\N{Die Face-5}\N{Die Face-6}",
-    }
+    "Completely Circled Alphabetics": u"ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ",
+    "Circled Alphabetics": u"⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ",
+    "Fullwidth Alphabetics" : u"ＡＢＣＤＥＦＧＨＩＪＫＬＭＮＯＰＱＲＳＴＵＶＷＸＹＺａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ",
+    "Bold Alphabetics" : u"𝐀𝐁𝐂𝐃𝐄𝐅𝐆𝐇𝐈𝐉𝐊𝐋𝐌𝐍𝐎𝐏𝐐𝐑𝐒𝐓𝐔𝐕𝐖𝐗𝐘𝐙𝐚𝐛𝐜𝐝𝐞𝐟𝐠𝐡𝐢𝐣𝐤𝐥𝐦𝐧𝐨𝐩𝐪𝐫𝐬𝐭𝐮𝐯𝐰𝐱𝐲𝐳",
+    "Italic Alphabetics" : u"𝐴𝐵𝐶𝐷𝐸𝐹𝐺𝐻𝐼𝐽𝐾𝐿𝑀𝑁𝑂𝑃𝑄𝑅𝑆𝑇𝑈𝑉𝑊𝑋𝑌𝑍𝑎𝑏𝑐𝑑𝑒𝑓𝑔ℎ𝑖𝑗𝑘𝑙𝑚𝑛𝑜𝑝𝑞𝑟𝑠𝑡𝑢𝑣𝑤𝑥𝑦𝑧",
+    "Bold Italic Alphabetics" : u"𝑨𝑩𝑪𝑫𝑬𝑭𝑮𝑯𝑰𝑱𝑲𝑳𝑴𝑵𝑶𝑷𝑸𝑹𝑺𝑻𝑼𝑽𝑾𝑿𝒀𝒁𝒂𝒃𝒄𝒅𝒆𝒇𝒈𝒉𝒊𝒋𝒌𝒍𝒎𝒏𝒐𝒑𝒒𝒓𝒔𝒕𝒖𝒗𝒘𝒙𝒚𝒛",
+    "Script Alphabetics" : u"𝒜ℬ𝒞𝒟ℰℱ𝒢ℋℐ𝒥𝒦ℒℳ𝒩𝒪𝒫𝒬ℛ𝒮𝒯𝒰𝒱𝒲𝒳𝒴𝒵𝒶𝒷𝒸𝒹ℯ𝒻ℊ𝒽𝒾𝒿𝓀𝓁𝓂𝓃ℴ𝓅𝓆𝓇𝓈𝓉𝓊𝓋𝓌𝓍𝓎𝓏",
+    "Script Bold Alphabetics" : u"𝓐𝓑𝓒𝓓𝓔𝓕𝓖𝓗𝓘𝓙𝓚𝓛𝓜𝓝𝓞𝓟𝓠𝓡𝓢𝓣𝓤𝓥𝓦𝓧𝓨𝓩𝓪𝓫𝓬𝓭𝓮𝓯𝓰𝓱𝓲𝓳𝓴𝓵𝓶𝓷𝓸𝓹𝓺𝓻𝓼𝓽𝓾𝓿𝔀𝔁𝔂𝔃",
+    "Fraktur Alphabetics" : u"𝔄𝔅ℭ𝔇𝔈𝔉𝔊ℌℑ𝔍𝔎𝔏𝔐𝔑𝔒𝔓𝔔ℜ𝔖𝔗𝔘𝔙𝔚𝔛𝔜ℨ𝔞𝔟𝔠𝔡𝔢𝔣𝔤𝔥𝔦𝔧𝔨𝔩𝔪𝔫𝔬𝔭𝔮𝔯𝔰𝔱𝔲𝔳𝔴𝔵𝔶𝔷",
+    "Doublestruck Alphabetics" : u"𝔸𝔹ℂ𝔻𝔼𝔽𝔾ℍ𝕀𝕁𝕂𝕃𝕄ℕ𝕆ℙℚℝ𝕊𝕋𝕌𝕍𝕎𝕏𝕐ℤ𝕒𝕓𝕔𝕕𝕖𝕗𝕘𝕙𝕚𝕛𝕜𝕝𝕞𝕟𝕠𝕡𝕢𝕣𝕤𝕥𝕦𝕧𝕨𝕩𝕪𝕫",
+    "Fraktur Bold Alphabetics" : u"𝕬𝕭𝕮𝕯𝕰𝕱𝕲𝕳𝕴𝕵𝕶𝕷𝕸𝕹𝕺𝕻𝕼𝕽𝕾𝕿𝖀𝖁𝖂𝖃𝖄𝖅𝖆𝖇𝖈𝖉𝖊𝖋𝖌𝖍𝖎𝖏𝖐𝖑𝖒𝖓𝖔𝖕𝖖𝖗𝖘𝖙𝖚𝖛𝖜𝖝𝖞𝖟",
+    "Sans Alphabetics" : u"𝖠𝖡𝖢𝖣𝖤𝖥𝖦𝖧𝖨𝖩𝖪𝖫𝖬𝖭𝖮𝖯𝖰𝖱𝖲𝖳𝖴𝖵𝖶𝖷𝖸𝖹𝖺𝖻𝖼𝖽𝖾𝖿𝗀𝗁𝗂𝗃𝗄𝗅𝗆𝗇𝗈𝗉𝗊𝗋𝗌𝗍𝗎𝗏𝗐𝗑𝗒𝗓",
+    "Sans Bold Alphabetics" : u"𝗔𝗕𝗖𝗗𝗘𝗙𝗚𝗛𝗜𝗝𝗞𝗟𝗠𝗡𝗢𝗣𝗤𝗥𝗦𝗧𝗨𝗩𝗪𝗫𝗬𝗭𝗮𝗯𝗰𝗱𝗲𝗳𝗴𝗵𝗶𝗷𝗸𝗹𝗺𝗻𝗼𝗽𝗾𝗿𝘀𝘁𝘂𝘃𝘄𝘅𝘆𝘇",
+    "Sans Italic Alphabetics" : u"𝘈𝘉𝘊𝘋𝘌𝘍𝘎𝘏𝘐𝘑𝘒𝘓𝘔𝘕𝘖𝘗𝘘𝘙𝘚𝘛𝘜𝘝𝘞𝘟𝘠𝘡𝘢𝘣𝘤𝘥𝘦𝘧𝘨𝘩𝘪𝘫𝘬𝘭𝘮𝘯𝘰𝘱𝘲𝘳𝘴𝘵𝘶𝘷𝘸𝘹𝘺𝘻",
+    "Sans Bold Italic Alphabetics" : u"𝘼𝘽𝘾𝘿𝙀𝙁𝙂𝙃𝙄𝙅𝙆𝙇𝙈𝙉𝙊𝙋𝙌𝙍𝙎𝙏𝙐𝙑𝙒𝙓𝙔𝙕𝙖𝙗𝙘𝙙𝙚𝙛𝙜𝙝𝙞𝙟𝙠𝙡𝙢𝙣𝙤𝙥𝙦𝙧𝙨𝙩𝙪𝙫𝙬𝙭𝙮𝙯",
+    "Monospace Alphabetics" : u"𝙰𝙱𝙲𝙳𝙴𝙵𝙶𝙷𝙸𝙹𝙺𝙻𝙼𝙽𝙾𝙿𝚀𝚁𝚂𝚃𝚄𝚅𝚆𝚇𝚈𝚉𝚊𝚋𝚌𝚍𝚎𝚏𝚐𝚑𝚒𝚓𝚔𝚕𝚖𝚗𝚘𝚙𝚚𝚛𝚜𝚝𝚞𝚟𝚠𝚡𝚢𝚣",
+    "Alphabetics with Umlaut" : u"ÄB̈C̈D̈ËF̈G̈ḦÏJ̈K̈L̈M̈N̈ÖP̈Q̈R̈S̈T̈ÜV̈ẄẌŸZ̈äb̈c̈d̈ëf̈g̈ḧïj̈k̈l̈m̈n̈öp̈q̈r̈s̈ẗüv̈ẅẍÿz̈",
+    "Modifier Alphabetics" : u"ᴬᴮʿᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴻᴼᴾᴿᵀᵁⱽᵂₐᵇᵈᵉᶠᵍʰᶤʲᵏˡᵐᵑᵒᵖʳˢᵗᵤᵛʷˣʸᶻ",
+    "Turned Alphabetics": u"ɐqɔpǝɟƃɥıɾʞʃɯuodbɹsʇnʌʍxʎz",
+    "Subscript Alphabetics": u"ᴀʙᴄᴅᴇꜰɢʜɪᴊᴋʟᴍɴᴏᴘʀꜱᴛᴜᴠᴡʏᴢₐₑₕᵢⱼₖₗₘₙₒₚᵣₛₜᵤᵥₓ",
+    "Superscript Alphabetics": u"ᴬᴮᴰᴱᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾᴿᵀᵁⱽᵂᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖʳˢᵗᵘᵛʷˣʸᶻ",
+    "Superscript and Subscript Math" : u"₀₁₂₃₄₅₆₇₈₉₊₋₌₍₎⁰¹²³⁴⁵⁶⁷⁸⁹⁺⁻⁼⁽⁾",
+    "Filled Circled Numerics": u"➊➋➌➍➎➏➐➑➒",
+    "Double Circled Numerics": u"⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾",
+    "Empty Circled Numerics": u"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳",
+    "Circled Alphanumerics": u"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳⑴⑵⑶⑷⑸⑹⑺⑻⑼⑽⑾⑿⒀⒁⒂⒃⒄⒅⒆⒇⒜⒝⒞⒟⒠⒡⒢⒣⒤⒥⒦⒧⒨⒩⒪⒫⒬⒭⒮⒯⒰⒱⒲⒳⒴⒵ⒶⒷⒸⒹⒺⒻⒼⒽⒾⒿⓀⓁⓂⓃⓄⓅⓆⓇⓈⓉⓊⓋⓌⓍⓎⓏⓐⓑⓒⓓⓔⓕⓖⓗⓘⓙⓚⓛⓜⓝⓞⓟⓠⓡⓢⓣⓤⓥⓦⓧⓨⓩ⓪⓫⓬⓭⓮⓯⓰⓱⓲⓳⓴⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾❶❷❸❹❺❻❼❽❾❿➀➁➂➃➄➅➆➇➈➉➊➋➌➍➎➏➐➑➒➓㉑㉒㉓㉔㉕㉖㉗㉘㉙㉚㉛㉜㉝㉞㉟㊱㊲㊳㊴㊵㊶㊷㊸㊹㊺㊻㊼㊽㊾㊿♳♴♵♶♷♸♹⓵⓶⓷⓸⓹⓺⓻⓼⓽⓾",
+    "Stars": u"✢✣✤✥✦✧✨✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼✽✾✿❀❁❂❃❄❅❆❇❈❉❊❋*͙⁎⁑⃰∗⊛⧆﹡＊٭≛⋆⍟⍣★☆☪⚝✡✦✧⭐⭑⭒",
+    "Symbology": u"☀☁☂☃☄★☆☎☏☔☕☚☛☠☢☤☭☮☯☹☺☻☼♫⚐⚑⚒⚓⚔⚕⚖♻✄✌✍✏♀♂⌚",
+    "Crossouts": u"Xxˣ͓̽ͯᶍẊẋẌẍₓ⒳Ⓧⓧ☒✕✖✗✘Ｘｘ𝁪𝅃𝅅𝐗𝐱𝑋𝑥𝑿𝒙𝒳𝓍𝓧𝔁𝔛𝔵𝕏𝕩𝖃𝖝𝖷𝗑𝗫𝘅𝘟𝘹𝙓𝙭𝚇𝚡×⨯ⵝ᙭Ҳ⚔⤧ҳ⤩᙮ⅹⅩ⤨⤪⨉⤫⤬",
+    "Box Drawing All": u"─━│┃┄┅┆┇┈┉┊┋┌┍┎┏┐┑┒┓└┕┖┗┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╌╍╎╏═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬╵╶╷╸╹╺╻╼╽╾╿",
+    "Box Drawing Double": u"═║╔╗╚╝╠╣╦╩╬",
+    "Box Drawing Dots": u"┄┅┆┇┈┉┊┋╍╌╎╏",
+    "Box Drawing Thick and Thin": u"┌┍┎┏┐┑┒┓└┕┖┗┘┙┚┛├┝┞┟┠┡┢┣┤┥┦┧┨┩┪┫┬┭┮┯┰┱┲┳┴┵┶┷┸┹┺┻┼┽┾┿╀╁╂╃╄╅╆╇╈╉╊╋╸╹╺╻╼╽╾╿",
+
+    "Box Drawing Single and Double": u"┌┐└┘├┤┬┴┼═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬╴╵╶╷",
+    "Block Drawing by Height": u"▀▁▂▃▄▅▆▇█▔",
+    "Block Drawing by Width": u"█▉▊▋▌▍▎▏▐▕",
+
+ }
 
 class Alphabet:
 
     @classmethod
-    def _fill_by_name(cls, data=None):
+    def _fill_by_name(cls, data=None, add_custom=True):
         for c in data:
             name = c['name']
             if 'characters' in c and len(c['characters']) > 0:
                 cls.by_name[name] = c
             if 'child' in c:
-                cls._fill_by_name(c['child'])
+                cls._fill_by_name(c['child'], False)
+
+        if not add_custom:
+            return
 
         # Also add in custom alphabets
         for name, chars in CUSTOM_ALPHABETS.items():
             cls.by_name[name] = dict(characters=chars)
+
+        # Add emoji.
+        emoji = []
+        for i in cls.EMOJI_S:
+            emoji += cls.by_name[i]['characters']
+        cls.by_name['Emoji'] = dict(characters=emoji)
+
 
     by_name = {}
 
@@ -40,15 +88,20 @@ class Alphabet:
         return cls.characters([choice])
 
     @classmethod
-    def random_choice_no_modifiers(cls):
+    def random_choice_no_modifiers(cls, minimum_size=2):
         """A completely random choice among non-modifier alphabets."""
         choice = None
         while choice is None:
             choice = random.choice(Alphabet.by_name.keys())
             if choice in Alphabet.MODIFIERS:
                 choice = None
-        # print "Choice: %s, len: %s" % (choice, len(cls.characters(choice)))
-        return cls.characters(choice)
+            # print "Choice: %s, len: %s" % (choice, len(cls.characters(choice)))
+            if choice is not None:
+                chars = cls.characters(choice)
+                if len(chars) < minimum_size:
+                    choice = None
+
+        return chars
 
     @classmethod
     def characters(cls, alphabets):
@@ -75,7 +128,27 @@ class Alphabet:
     CYRILLIC = ["Cyrillic"]
     CYRILLIC_FULL = ["Cyrillic", "Cyrillic Supplement", "Cyrillic Extended-A", "Cyrillic Extended-B"]
 
-    LATIN_S = [ASCII, LATIN_1, LATIN_FULL]
+    LATIN_S = [ASCII, LATIN_1, LATIN_FULL, 
+               "Circled Alphabetics",
+               "Circled Alphanumerics",
+               "Bold Alphabetics",
+               "Italic Alphabetics",
+               "Script Alphabetics",
+               "Bold Italic Alphabetics",
+               "Script Bold Alphabetics",
+               "Fraktur Alphabetics",
+               "Doublestruck Alphabetics",
+               "Fraktur Bold Alphabetics",
+               "Sans Alphabetics",
+               "Sans Bold Alphabetics",
+               "Sans Italic Alphabetics",
+               "Sans Bold Italic Alphabetics",
+               "Monospace Alphabetics",
+               "Alphabetics with Umlaut",
+               "Turned Alphabetics",
+               "Subscript Alphabetics",
+               "Superscript Alphabetics",
+               ]
 
     CYRILLIC_S = [CYRILLIC, CYRILLIC_FULL]
 
@@ -227,6 +300,23 @@ class Alphabet:
         "Phonetic Extensions",
         "Phonetic Extensions Supplement",
         "Old Italic",
+        "Circled Alphabetics",
+        "Circled Alphanumerics",
+        "Double Circled Numerics",
+        "Bold Alphabetics",
+        "Italic Alphabetics",
+        "Script Alphabetics",
+        "Bold Italic Alphabetics",
+        "Script Bold Alphabetics",
+        "Fraktur Alphabetics",
+        "Doublestruck Alphabetics",
+        "Fraktur Bold Alphabetics",
+        "Sans Alphabetics",
+        "Sans Bold Alphabetics",
+        "Sans Italic Alphabetics",
+        "Sans Bold Italic Alphabetics",
+        "Monospace Alphabetics",
+        "Alphabetics with Umlaut",
         ]
 
     # "Weird Twitter" mixins for Latin characters.
@@ -280,6 +370,7 @@ class Alphabet:
         "Number Forms",
         "Fullwidth ASCII Digits",
         "Superscripts and Subscripts",
+        "Superscript and Subscript Math",
         ]
 
     WEIRD_TWITTER_MATH_MIXINS = [
@@ -293,6 +384,7 @@ class Alphabet:
     SYMBOLIC_ALPHABETS = [
         "APL symbols",
         "Miscellaneous Technical",
+        "Miscellaneous Symbols And Pictographs",
         "Optical Character Recognition (OCR)",
         "Arrows",
         "Supplemental Arrows-A",
@@ -319,12 +411,13 @@ class Alphabet:
     # have geometric appeal
     GEOMETRIC_ALPHABETS = [
         "Geometric Shapes",
-        "CJK Compatibility Forms",
+        # "CJK Compatibility Forms",
         "Additional Shapes",
         "Box Drawing",
         "Block Elements",
         "Braille Patterns",
         "Yijing Mono-, Di- and Trigrams",
+        "Stars",
         ]
 
     # Yijing symbols
@@ -338,7 +431,9 @@ class Alphabet:
     GLITCHES = [
         "Optical Character Recognition (OCR)",
         "Floors and Ceilings",
+        "Shading Mosaic", # Custom alphabet
         "One Dot", # Custom alphabet
+        "Fill Mosaic", # Custom alphabet
         ]
 
     # Custom alphabets 
@@ -502,6 +597,13 @@ class Alphabet:
 
     TRIANGLES = UP_POINTING_TRIANGLES + DOWN_POINTING_TRIANGLES + LEFT_POINTING_TRIANGLES + RIGHT_POINTING_TRIANGLES
 
+    RECTANGLES = unicode_charset("Rectangles",
+        "BLACK RECTANGLE", #▬
+        "WHITE RECTANGLE", #▭
+        "BLACK VERTICAL RECTANGLE", #▮
+        "WHITE VERTICAL RECTANGLE", #▯
+                            )
+
     QUADRILATERALS = unicode_charset("Quadrilaterals",
         "Apl functional symbol quad backslash",
         "Apl functional symbol quad slash",
@@ -562,11 +664,7 @@ class Alphabet:
         "SQUARE WITH DIAGONAL CROSSHATCH FILL", #▩
         "WHITE SQUARE WITH CENTRE VERTICAL LINE", #⎅
         "SQUARE FOOT", #⏍
-        "BLACK RECTANGLE", #▬
-        "WHITE RECTANGLE", #▭
-        "BLACK VERTICAL RECTANGLE", #▮
-        "WHITE VERTICAL RECTANGLE", #▯
-        )
+        ) + RECTANGLES
 
     PENTAGONS_AND_LARGER_POLYGONS = unicode_charset("Miscellaneous Polygons",
         "Benzene ring with circle",
@@ -591,6 +689,7 @@ class Alphabet:
     CIRCLES = unicode_charset("Circles",
         "UGARITIC LETTER THANNA", #𐎘
         "HEBREW MARK MASORA CIRCLE", #֯
+        "ARABIC END OF AYAH", #۝
         "COMBINING ENCLOSING CIRCLE", #⃝
         "COMBINING ENCLOSING CIRCLE BACKSLASH", #⃠
         "APL FUNCTIONAL SYMBOL CIRCLE STILE", #⌽
@@ -604,6 +703,7 @@ class Alphabet:
         "DENTISTRY SYMBOL LIGHT DOWN AND HORIZONTAL WITH CIRCLE", #⏁
         "DENTISTRY SYMBOL LIGHT UP AND HORIZONTAL WITH CIRCLE", #⏂
         "BENZENE RING WITH CIRCLE", #⏣
+        "BULLSEYE", # ◎
         "WHITE CIRCLE", #○
         "DOTTED CIRCLE", #◌
         "CIRCLE WITH VERTICAL FILL", #◍
@@ -845,7 +945,7 @@ class Alphabet:
             "FULL BLOCK",
             )
 
-    TERMINAL_GRAPHIC_MOSAIC = unicode_charset("Termianl Graphic Mosaic",
+    TERMINAL_GRAPHIC_MOSAIC = unicode_charset("Terminal Graphic Mosaic",
             "QUADRANT LOWER LEFT",
             "QUADRANT LOWER RIGHT",
             "QUADRANT UPPER LEFT",
@@ -881,6 +981,30 @@ class Alphabet:
             "BOX DRAWINGS LIGHT UP AND RIGHT",
             )
 
+    BOX_DRAWING_HEAVY_MOSAIC = unicode_charset("Box Drawing Heavy Mosaic",
+        "BOX DRAWINGS HEAVY HORIZONTAL", #━
+        "BOX DRAWINGS HEAVY VERTICAL", #┃
+        "BOX DRAWINGS HEAVY TRIPLE DASH HORIZONTAL", #┅
+        "BOX DRAWINGS HEAVY TRIPLE DASH VERTICAL", #┇
+        "BOX DRAWINGS HEAVY QUADRUPLE DASH HORIZONTAL", #┉
+        "BOX DRAWINGS HEAVY QUADRUPLE DASH VERTICAL", #┋
+        "BOX DRAWINGS HEAVY DOWN AND RIGHT", #┏
+        "BOX DRAWINGS HEAVY DOWN AND LEFT", #┓
+        "BOX DRAWINGS HEAVY UP AND RIGHT", #┗
+        "BOX DRAWINGS HEAVY UP AND LEFT", #┛
+        "BOX DRAWINGS HEAVY VERTICAL AND RIGHT", #┣
+        "BOX DRAWINGS HEAVY VERTICAL AND LEFT", #┫
+        "BOX DRAWINGS HEAVY DOWN AND HORIZONTAL", #┳
+        "BOX DRAWINGS HEAVY UP AND HORIZONTAL", #┻
+        "BOX DRAWINGS HEAVY VERTICAL AND HORIZONTAL", #╋
+        "BOX DRAWINGS HEAVY DOUBLE DASH HORIZONTAL", #╍
+        "BOX DRAWINGS HEAVY DOUBLE DASH VERTICAL", #╏
+        "BOX DRAWINGS HEAVY LEFT", #╸
+        "BOX DRAWINGS HEAVY UP", #╹
+        "BOX DRAWINGS HEAVY RIGHT", #╺
+        "BOX DRAWINGS HEAVY DOWN", #╻
+        )
+
     BOX_DRAWING_ARC_MOSAIC = unicode_charset("Box Drawing Arc Mosaic",
             "BOX DRAWINGS LIGHT ARC DOWN AND RIGHT",
             "BOX DRAWINGS LIGHT ARC DOWN AND LEFT",
@@ -894,11 +1018,23 @@ class Alphabet:
             "BOX DRAWINGS LIGHT DIAGONAL CROSS",
             )
 
-    PARTIALLY_FILLED_SQUARE_MOSAIC = unicode_charset("Partially Filled Square Mosaic",
+    PARTIALLY_FILLED_SQUARE_MOSAIC_DIAGONALS_ONLY = unicode_charset("Partially Filled Square Mosaic (Diagonals Only)",
         "SQUARE WITH UPPER RIGHT DIAGONAL HALF BLACK", #⬔
         "SQUARE WITH LOWER LEFT DIAGONAL HALF BLACK", #⬕
+        "SQUARE WITH LOWER RIGHT DIAGONAL HALF BLACK", #◪
+        "SQUARE WITH UPPER LEFT DIAGONAL HALF BLACK", #◩
+        )
+
+    PARTIALLY_FILLED_SQUARE_MOSAIC = unicode_charset(
+        "Partially Filled Square Mosaic",
         "SQUARE WITH UPPER RIGHT DIAGONAL HALF BLACK", #⬔
         "SQUARE WITH LOWER LEFT DIAGONAL HALF BLACK", #⬕
+        "SQUARE WITH LOWER RIGHT DIAGONAL HALF BLACK", #◪
+        "SQUARE WITH UPPER LEFT DIAGONAL HALF BLACK", #◩
+        "SQUARE WITH LEFT HALF BLACK", #◧
+        "SQUARE WITH RIGHT HALF BLACK", #◨
+        "SQUARE WITH TOP HALF BLACK", #⬒
+        "SQUARE WITH BOTTOM HALF BLACK", #⬓
         )
 
     PARTIALLY_FILLED_CIRCLE_MOSAIC = unicode_charset("Partially Filled Circle Mosaic",
@@ -911,9 +1047,53 @@ class Alphabet:
         "CIRCLE WITH ALL BUT UPPER LEFT QUADRANT BLACK", #◕
         )
 
+    # These charsets can make a (potentially mirrorable) mosaic 
+    # in conjunction with EM SPACE.
+    TILABLE_CHARSET_S = [
+        CUSTOM_ALPHABETS["Box Drawing Dots"],
+        CUSTOM_ALPHABETS["Box Drawing Thick and Thin"],
+        CUSTOM_ALPHABETS["Box Drawing Single and Double"],
+        CUSTOM_ALPHABETS["Box Drawing Double"],
+        CUSTOM_ALPHABETS["Block Drawing by Width"],
+        CUSTOM_ALPHABETS["Block Drawing by Height"],
+        "Yijing Hexagram Symbols",
+        "Tai Xuan Jing Symbols",
+        "Braille Patterns",
+        "Emoji",
+        BLOCK_MOSAIC,
+        # CUSTOM_ALPHABETS["Box Drawing All"],
+        # BOX_DRAWING_ARC_MOSAIC,
+        PARTIALLY_FILLED_CIRCLE_MOSAIC,
+        BOX_DRAWING_HEAVY_MOSAIC,
+        BOX_DRAWING_MOSAIC,
+        CHARACTER_CELL_DIAGONAL_MOSAIC,
+        FILL_MOSAIC,
+        HORIZONTAL_BLOCK_MOSAIC,
+        PARTIALLY_FILLED_SQUARE_MOSAIC,
+        SHADING_MOSAIC,
+        TERMINAL_GRAPHIC_MOSAIC,
+        VERTICAL_BLOCK_MOSAIC,
+        RECTANGLES,
+    ]
+
     MOSAIC_CHARSET_S = [
+        CUSTOM_ALPHABETS["Completely Circled Alphabetics"],
+        CUSTOM_ALPHABETS["Fullwidth Alphabetics"],
+        CUSTOM_ALPHABETS["Double Circled Numerics"],
+        CUSTOM_ALPHABETS["Filled Circled Numerics"],
+        CUSTOM_ALPHABETS["Empty Circled Numerics"],
+        CUSTOM_ALPHABETS["Dice"],
+        CUSTOM_ALPHABETS["Box Drawing All"],
+        CUSTOM_ALPHABETS["Box Drawing Dots"],
+        CUSTOM_ALPHABETS["Box Drawing Thick and Thin"],
+        CUSTOM_ALPHABETS["Box Drawing Single and Double"],
+        CUSTOM_ALPHABETS["Box Drawing Double"],
+        CUSTOM_ALPHABETS["Block Drawing by Width"],
+        CUSTOM_ALPHABETS["Block Drawing by Height"],
+        RECTANGLES,
         BLOCK_MOSAIC,
         BOX_DRAWING_ARC_MOSAIC,
+        BOX_DRAWING_HEAVY_MOSAIC,
         BOX_DRAWING_MOSAIC,
         CHARACTER_CELL_DIAGONAL_MOSAIC,
         FILL_MOSAIC,
@@ -924,6 +1104,12 @@ class Alphabet:
         TERMINAL_GRAPHIC_MOSAIC,
         VERTICAL_BLOCK_MOSAIC,
         TRIANGLES,
+        ]
+
+    EMOJI_S = [
+        "Miscellaneous Symbols And Pictographs",
+        "Transport and Map Symbols",
+        "Emoticons",
         ]
 
 class WordLength:
@@ -984,6 +1170,10 @@ class Corruptor(object):
 
 class Gibberish(object):
 
+    minimum_length = 3
+    can_truncate = True
+    end_with = None
+
     @classmethod
     def from_alphabets(cls, alphabets):
         return cls("".join(Alphabet.characters(alphabets)))
@@ -1015,6 +1205,7 @@ class Gibberish(object):
     def words(self, length):
         words = ''
         i = 0
+        from pdb import set_trace
         while True:
             word_length = None
             if self.word_length is None:
@@ -1023,7 +1214,10 @@ class Gibberish(object):
             if not words:
                 words = word
             else:
-                words += self.word_separator + word
+                new_words = words + self.word_separator + word
+                if len(new_words) > length and not self.can_truncate:
+                    break
+                words = new_words
             i += 1
             if len(words) >= length or (self.num_words is not None and i > self.num_words):
                 break
@@ -1034,8 +1228,24 @@ class Gibberish(object):
         if random.randint(0,4) == 0:
             length = 140
         else:
-            length = int(max(15, min(random.gauss(90, 30), 140)))
-        return self.words(length)
+            if random.randint(0,4) == 0:
+                # Short
+                mean = 30
+                dev = 10
+                m = 5
+            else:
+                # Long
+                mean = 90
+                dev = 30
+                m = 15
+            length = int(max(m, min(random.gauss(mean, dev), 140)))
+        if self.end_with:
+            length -= len(self.end_with)
+        length = max(self.minimum_length, length)
+        tweet = self.words(length)
+        if self.end_with:
+            tweet += self.end_with
+        return tweet
 
     @classmethod
     def weird_twitter(cls, base_alphabets, alternate_alphabets,
@@ -1164,12 +1374,14 @@ class EmoticonGibberish(Gibberish):
         if charsets is None:
             charsets = Alphabet.random_choice_no_modifiers()
         self.charsets = charsets
+        self.mouths = u'____⁔𝁛ᨓ⏟‿⏝ω'
         super(EmoticonGibberish, self).__init__(None)
 
     def word(self, word_length=None):
         charset = random.choice(self.charsets)
         eye = random.choice(charset)
-        return eye + "_" + eye
+
+        return eye + random.choice(self.mouths) + eye
 
     def tweet(self):
         num_words = random.randint(1,3)
@@ -1188,23 +1400,94 @@ class GameBoardGibberish(Gibberish):
         super(GameBoardGibberish, self).__init__(
             charset, word_length, word_separator, num_words)
 
-class MosaicGibberish(Gibberish):
-    def __init__(self, charset=None):
-        charset = random.choice(Alphabet.MOSAIC_CHARSET_S)
-        if random.randint(0, 1) == 0:
-            # Linear mosaic
-            word_length = None
-            word_separator = ' '
-            num_words = None
+class CheatCodeGibberish(Gibberish):
+    "Video game input codes."
+
+    def __init__(self):
+        self.base_charset = u'←↑→↓'
+        self.fighting_game_charset = self.base_charset + u'↖↗↘↙↺↻PK'
+        self.nes_charset = self.base_charset + u'AB'
+
+    def tweet(self):
+        num_words = random.randint(5,10)
+        if random.randint(0,2) == 0:
+            charset = self.fighting_game_charset
         else:
-            # Two-dimensional mosaic
-            size = random.randint(3, 11)
-            num_words = size + random.randint(-2,2)
-            word_length = lambda: size
-            word_separator = '\n'
-        super(MosaicGibberish, self).__init__(charset, word_length, word_separator, num_words)
+            charset = self.nes_charset
+        return ' '.join(random.choice(charset) for word in range(num_words))
+
+class SingleModifierGibberish(Gibberish):
+    def __init__(self, table):
+        self.other_generator = table.choice(None)
+        modifier_charset = Alphabet.random_choice(*Alphabet.MODIFIERS)
+        self.modifier = random.choice(modifier_charset)
+
+    def tweet(self):
+        tweet = self.other_generator.tweet()
+        new_tweet = []
+        for i in tweet:
+            new_tweet += i + self.modifier
+        new_tweet = unicodedata.normalize("NFC", "".join(new_tweet))
+        return new_tweet[:140]
+
+class MosaicGibberish(Gibberish):
+
+    def __init__(self, alphabet=None):
+        if not alphabet:
+            alphabet = random.choice(Alphabet.MOSAIC_CHARSET_S)
+        l = int(random.gauss(8,3))
+        word_length = lambda: l
+        word_separator = '\n'
+        num_words = None
+        self.can_truncate = False
+        super(MosaicGibberish, self).__init__(
+            alphabet, word_length, word_separator, num_words)
+
 
 Alphabet._fill_by_name(data.load_json("unicode_code_sheets.json"))
+
+class GibberishGradient(Gibberish):
+
+    minimum_length = 140
+    gradient_method = Gradient.gradient
+
+    def __init__(self):
+        super(GibberishGradient, self).__init__(None)
+
+    def words(self, length):
+        alpha1 = Alphabet.random_choice_no_modifiers()
+        alpha2 = Alphabet.random_choice_no_modifiers()
+        a = "".join(x for x in self.gradient_method(alpha1, alpha2, length))
+        return a
+
+class GibberishRainbowGradient(GibberishGradient):
+
+    minimum_length = 140
+    gradient_method = Gradient.rainbow_gradient
+
+class CompositeGibberish(Gibberish):
+
+    def __init__(self, table):
+        self.table = table
+        super(CompositeGibberish, self).__init__(None)
+
+    SEPARATORS = u"     /\-=#:.,|_⏟"
+
+    def words(self, length):
+        num_gibberish = random.randint(2,5)
+        size_of_each = (length-num_gibberish) / num_gibberish
+        gibberishes = []
+        for i in range(min(2, size_of_each)):
+            g = None
+            while g is None or not hasattr(g, 'word_length') or g.word_separator == '\n':
+                g = self.table.choice(None)
+
+            gibberishes.append(g.words(size_of_each))
+        return random.choice(self.SEPARATORS).join(gibberishes)
+
+class RosettaStoneGibberish(CompositeGibberish):
+    """A number of small gibberishes, one per line."""
+    SEPARATORS = u"\n"
 
 class GibberishTable(WanderingMonsterTable):
 
@@ -1214,13 +1497,35 @@ class GibberishTable(WanderingMonsterTable):
         # Populate the table. An entry may be:
         #  * The name of an alphabet, or a list of names.
         #  * A Gibberish object.
-        #  * A funciton that returns a Gibberish object.
+        #  * A function that returns a Gibberish object.
 
         # One of the Cyrillic alphabets.
         self.add(self.choice_among_alphabets(Alphabet.CYRILLIC_S), RARE)
 
+        # One of the Latin alphabets.
+        self.add(self.choice_among_alphabets(Alphabet.LATIN_S), UNCOMMON)
+
         # One of the linguistic alphabets.
         self.add(self.choice_among_alphabets(Alphabet.ALL_LANGUAGE_ALPHABETS_S), COMMON)
+
+        all_but_large_cjk = list(Alphabet.ALL_LANGUAGE_ALPHABETS_S)
+        for i in ("CJK Unified Ideographs (Han)", "Hangul Syllables",
+                  "CJK Compatibility Ideographs",):
+            all_but_large_cjk.remove(i)
+
+        # ALL of the non-huge linguistic alphabets.
+        self.add(self.charset_from_alphabets(all_but_large_cjk), VERY_RARE)
+
+        # Some combination of the non-huge linguistic alphabets.
+        self.add(self.combination_of_alphabets(all_but_large_cjk), UNCOMMON)
+
+        # A gradient between two alphabets.
+        self.add(GibberishGradient, COMMON)
+        self.add(GibberishRainbowGradient, UNCOMMON)
+
+        # A mirrored mosaic
+        from mosaic import MirroredMosaicGibberish
+        self.add(MirroredMosaicGibberish, COMMON)
 
         # One of the geometric alphabets.
         self.add(self.choice_among_alphabets(Alphabet.GEOMETRIC_ALPHABETS), UNCOMMON)
@@ -1232,19 +1537,29 @@ class GibberishTable(WanderingMonsterTable):
         self.add(Alphabet.GEOMETRIC_ALPHABETS, VERY_RARE)
 
         # A limited subset of one script.
-        self.add(Gibberish.limited_vocabulary, RARE)
+        self.add(Gibberish.limited_vocabulary, COMMON)
 
         # A mosaic charset.
         self.add(MosaicGibberish, UNCOMMON)
 
+        # Some other kind of gibberish with a single modifier applied
+        # to every character.
+        self.add(lambda: SingleModifierGibberish(self), COMMON)
+
+        # Composite gibberish
+        self.add(lambda: CompositeGibberish(self), UNCOMMON)
+
+        # Composite gibberish, newline-separated
+        self.add(lambda: RosettaStoneGibberish(self), UNCOMMON)
+
         # A game board charset.
-        self.add(GameBoardGibberish, RARE)
+        self.add(GameBoardGibberish, VERY_RARE)
 
         # A shape-based charset
         self.add(self.choice_among_charsets(Alphabet.SHAPE_CHARSET_S), VERY_RARE)
 
         # A dot-based charset
-        self.add(self.choice_among_charsets(Alphabet.DOT_CHARSET_S), VERY_RARE)
+        self.add(self.choice_among_charsets(Alphabet.DOT_CHARSET_S), UNCOMMON)
 
         # Weird Latin Twitter
         def weird_latin_twitter():
@@ -1253,6 +1568,10 @@ class GibberishTable(WanderingMonsterTable):
                 Alphabet.WEIRD_TWITTER_LATIN,
                 Alphabet.WEIRD_TWITTER_LATIN_MIXINS)
         self.add(weird_latin_twitter, COMMON)
+
+        # Nothimg but emoji!
+        def nothing_but_emoji():
+            self.add(self.choice_among_charsets(Alphabet.EMOJI_S), RARE)
 
         # Weird Japanese Twitter
         def weird_japanese_twitter():
@@ -1282,6 +1601,9 @@ class GibberishTable(WanderingMonsterTable):
         # Emoticons
         self.add(EmoticonGibberish, VERY_RARE)
 
+        # Video game cheat codes.
+        self.add(CheatCodeGibberish, VERY_RARE)
+
     def weird_twitter(self, base, weird, mixins, word_length=None,
                       weird_multiplier=1):
         how_weird = int(random.expovariate(1.0/6)) * weird_multiplier
@@ -1290,23 +1612,50 @@ class GibberishTable(WanderingMonsterTable):
         gibberish.word_length = word_length
         return gibberish
 
+    def charset_from_alphabets(self, alphabets):
+        charset = ''
+        for alphabet in alphabets:
+            if isinstance(alphabet, basestring):
+                alphabet = [alphabet]
+            charset += Alphabet.characters(alphabet)
+        gibberish = Gibberish(charset)
+        gibberish.original_alphabets = alphabets
+        return gibberish
+
     def choice_among_alphabets(self, alphabets):
         """Returns a function that chooses an alphabet from a list.
 
-        There is a 25% chance that the charset will be weirded a bit.
+        There is a 33% chance that the charset will be weirded a bit.
         """
         def c():
             alphabet = random.choice(alphabets)
             if isinstance(alphabet, basestring):
                 alphabet = [alphabet]
             charset = Alphabet.characters(alphabet)
-            if random.randint(0,3) == 0:
-                # 25% chance to make it a little weirder.
+            if random.randint(0,2) == 0:
+                # 33% chance to make it a little weirder.
                 gibberish = Gibberish.a_little_weirder_than(charset)
             else:
                 gibberish = Gibberish(charset)
+            gibberish.original_alphabets = alphabets
             return gibberish
         return c
+
+    def combination_of_alphabets(self, alphabets, num=None):
+        """Returns a function that chooses a number of alphabets from a list."""
+        def combo():
+            how_many = num or max(2, int(random.gauss(4,2)))
+            if len(alphabets) <= how_many:
+                choices = alphabets
+            else:
+                choices = random.sample(alphabets, how_many)
+            gibberish = self.charset_from_alphabets(choices)
+            if random.randint(1,10) == 1:
+                # 10% chance to make it a little weirder.
+                gibberish = Gibberish.a_little_weirder_than(gibberish.charset)
+            gibberish.original_alphabets = alphabets
+            return gibberish
+        return combo
 
     def choice_among_charsets(self, charsets):
         """Returns a function that chooses a charset from a list.
@@ -1350,7 +1699,7 @@ class GibberishTable(WanderingMonsterTable):
             gibberish.word_separator = '\n'
 
         # Blanket 10% chance to add 10% glitches
-        if random.randint(0, 10) >= 0:
+        if random.randint(0, 10) == 1:
             glitches = ''
             glitch_charset = Alphabet.random_choice(Alphabet.GLITCHES)
             max_glitches = len(gibberish.charset) / 10
@@ -1358,11 +1707,48 @@ class GibberishTable(WanderingMonsterTable):
             while len(glitch_characters) < max_glitches:
                 glitch_characters += random.choice(glitch_charset)
             gibberish.charset += glitch_characters
+
+        # Blanket 10% chance to add an emoji on the end.
+        if random.randint(0, 10) == 1:
+            gibberish.end_with = " " + random.choice(Alphabet.characters('Emoji'))
         return gibberish
+
+class GlyphNames(object):
+    """I know the names of glyphs."""
+
+    def __init__(self):
+        self.inverse = dict()
+        # self.missing = []
+        # self.max_present = None
+        for i in range(1, 1000000):
+            c = unichr(i)
+            try:
+                glyph_name = unicodedata.name(c)
+                self.inverse[glyph_name] = c
+                # self.max_present = i
+            except ValueError, e:
+                # self.missing.append(i)
+                continue
+
+    @classmethod
+    def names(self, s):
+        """Yield the name of every glyph in the given string."""
+        for glyph in s:
+            try:
+                yield glyph, unicodedata.name(glyph)
+            except ValueError, e:
+                yield glyph, None
+
+    def matching(self, exp):
+        """Yield all name-glyph pairs where the name matches a regexp."""
+        for name, value in self.inverse.keys():
+            if exp.search(name):
+                yield name, value
 
 if __name__ == '__main__':
     freq = None
     alphabets = None
+
     if len(sys.argv) == 2 and sys.argv[1] in (COMMON, UNCOMMON, RARE, VERY_RARE, None):
         freq = sys.argv[1]
     else:
@@ -1371,6 +1757,7 @@ if __name__ == '__main__':
     gibberish = None
     if alphabets:
         gibberish = Gibberish.from_alphabets(alphabets)
+    table = GibberishTable()
     for i in range(100):
         if not alphabets:
             gibberish = Gibberish.random(freq)
