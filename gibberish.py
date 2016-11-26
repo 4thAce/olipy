@@ -1,6 +1,7 @@
 # coding=utf-8
 """Create gibberish from source alphabets."""
 
+from pdb import set_trace
 import os
 import json
 import random
@@ -49,7 +50,7 @@ CUSTOM_ALPHABETS = {
     "Box Drawing Single and Double": u"┌┐└┘├┤┬┴┼═║╒╓╔╕╖╗╘╙╚╛╜╝╞╟╠╡╢╣╤╥╦╧╨╩╪╫╬╴╵╶╷",
     "Block Drawing by Height": u"▀▁▂▃▄▅▆▇█▔",
     "Block Drawing by Width": u"█▉▊▋▌▍▎▏▐▕",
-
+    "Skin Tones" : u"🏻🏼🏽🏾🏿",
  }
 
 class Alphabet:
@@ -102,6 +103,28 @@ class Alphabet:
                     choice = None
 
         return chars
+
+    @classmethod
+    def subset(cls, alphabet, how_many_characters=None):
+        """A limited subset of an alphabet."""
+        full = Alphabet.random_choice_no_modifiers()
+        limited = ''
+        if not how_many_characters:
+            how_many_characters = max(2, int(random.gauss(4, 2)))
+        for i in range(how_many_characters):
+            limited += random.choice(alphabet)
+        return limited
+
+    @classmethod
+    def random_whitespace(cls):
+        "A whitespace character selected at random."
+        return random.choice(cls.WHITESPACE)
+
+    @classmethod
+    def random_modifier(cls):
+        "A modifier selected at random."
+        alphabet = Alphabet.characters(cls.MODIFIERS)
+        return random.choice(alphabet)
 
     @classmethod
     def characters(cls, alphabets):
@@ -1090,6 +1113,7 @@ class Alphabet:
         CUSTOM_ALPHABETS["Box Drawing Double"],
         CUSTOM_ALPHABETS["Block Drawing by Width"],
         CUSTOM_ALPHABETS["Block Drawing by Height"],
+        CUSTOM_ALPHABETS["Skin Tones"],
         RECTANGLES,
         BLOCK_MOSAIC,
         BOX_DRAWING_ARC_MOSAIC,
@@ -1111,6 +1135,24 @@ class Alphabet:
         "Transport and Map Symbols",
         "Emoticons",
         ]
+
+    WHITESPACE = unicode_charset(
+        "NO-BREAK SPACE",
+        "EN QUAD",
+        "EM QUAD",
+        "EN SPACE",
+        "EM SPACE",
+        "THREE-PER-EM SPACE",
+        "FOUR-PER-EM SPACE",
+        "SIX-PER-EM SPACE",
+        "FIGURE SPACE",
+        "PUNCTUATION SPACE",
+        "THIN SPACE",
+        "HAIR SPACE",
+        "NARROW NO-BREAK SPACE",
+        "MEDIUM MATHEMATICAL SPACE",
+        "IDEOGRAPHIC SPACE",
+    )
 
 class WordLength:
 
@@ -1205,7 +1247,6 @@ class Gibberish(object):
     def words(self, length):
         words = ''
         i = 0
-        from pdb import set_trace
         while True:
             word_length = None
             if self.word_length is None:
@@ -1245,6 +1286,12 @@ class Gibberish(object):
         tweet = self.words(length)
         if self.end_with:
             tweet += self.end_with
+        if not tweet[0].strip():
+            # This tweet starts with whitespace. Use COMBINING
+            # GRAPHEME JOINER to get Twitter to preserve the whitespace.
+            tweet = u"\N{COMBINING GRAPHEME JOINER}" + tweet
+        if len(tweet) > 140:
+            tweet = tweet[:140]
         return tweet
 
     @classmethod
@@ -1339,13 +1386,13 @@ class Gibberish(object):
         return Gibberish(alphabet)
 
     @classmethod
-    def limited_vocabulary(cls, how_many_characters=None):
+    def limited_vocabulary(cls, how_many_characters=None, include_whitespace=None):
         full = Alphabet.random_choice_no_modifiers()
-        limited = ''
-        if not how_many_characters:
-            how_many_characters = max(2, int(random.gauss(4, 2)))
-        for i in range(how_many_characters):
-            limited += random.choice(full)
+        limited = Alphabet.subset(full, how_many_characters)
+        if include_whitespace is None:
+            include_whitespace = random.random() < 0.33
+        if include_whitespace:
+            limited += random.choice(Alphabet.WHITESPACE)
         return cls(limited)
 
     @classmethod
@@ -1387,6 +1434,29 @@ class EmoticonGibberish(Gibberish):
         num_words = random.randint(1,3)
         return ' '.join(self.word() for word in range(num_words))
 
+class SamplerGibberish(Gibberish):
+    def __init__(self, alphabet=None):
+        self.rows = random.randint(1,3)
+        self.per_row = random.randint(3,4)
+        if self.rows == 1:
+            self.per_row += 3
+        self.total_size = self.rows * self.per_row
+        while not (alphabet and len(alphabet) > self.total_size):
+            alphabet = Alphabet.random_choice()
+        self.alphabet = alphabet
+
+    def tweet(self):
+        whitespace = Alphabet.random_whitespace()
+        rows = []
+        sample = random.sample(self.alphabet, self.total_size)
+        for i in range(self.rows):
+            row = ''
+            for i in range(self.per_row):
+                row += sample.pop()
+            rows.append(whitespace.join(row))
+        value = "\n".join(rows)
+        return value
+
 class GameBoardGibberish(Gibberish):
     def __init__(self, charset=None):
         choices = list(Alphabet.GAMING_ALPHABETS)
@@ -1416,33 +1486,42 @@ class CheatCodeGibberish(Gibberish):
             charset = self.nes_charset
         return ' '.join(random.choice(charset) for word in range(num_words))
 
-class SingleModifierGibberish(Gibberish):
-    def __init__(self, table):
+class LimitedModifierGibberish(Gibberish):
+    def __init__(self, table, num_modifiers=None):
         self.other_generator = table.choice(None)
-        modifier_charset = Alphabet.random_choice(*Alphabet.MODIFIERS)
-        self.modifier = random.choice(modifier_charset)
+        self.modifiers = ''
+        if num_modifiers is None:
+            num_modifiers = int(max(1, random.gauss(1,3)))
+        for i in range(num_modifiers):
+            modifier_charset = Alphabet.random_choice(*Alphabet.MODIFIERS)
+            self.modifiers += random.choice(modifier_charset)
 
     def tweet(self):
         tweet = self.other_generator.tweet()
         new_tweet = []
         for i in tweet:
-            new_tweet += i + self.modifier
+            new_tweet += i + random.choice(self.modifiers)
         new_tweet = unicodedata.normalize("NFC", "".join(new_tweet))
         return new_tweet[:140]
 
 class MosaicGibberish(Gibberish):
 
-    def __init__(self, alphabet=None):
+    def __init__(self, alphabet=None, include_whitespace=None):
         if not alphabet:
             alphabet = random.choice(Alphabet.MOSAIC_CHARSET_S)
         l = int(random.gauss(8,3))
+        if include_whitespace is None:
+            include_whitespace = random.random() < 0.25
+        if include_whitespace:
+            choice = random.choice(Alphabet.WHITESPACE)
+            size = random.randint(1, len(alphabet)*2)
+            alphabet += (choice * size)
         word_length = lambda: l
         word_separator = '\n'
         num_words = None
         self.can_truncate = False
         super(MosaicGibberish, self).__init__(
             alphabet, word_length, word_separator, num_words)
-
 
 Alphabet._fill_by_name(data.load_json("unicode_code_sheets.json"))
 
@@ -1458,6 +1537,28 @@ class GibberishGradient(Gibberish):
         alpha1 = Alphabet.random_choice_no_modifiers()
         alpha2 = Alphabet.random_choice_no_modifiers()
         a = "".join(x for x in self.gradient_method(alpha1, alpha2, length))
+        return a
+
+class ModifierGradientGibberish(Gibberish):
+    """The alphabet stays the same throughout the tweet, but the modifier
+    used slowly changes from one to another.
+    """
+
+    minimum_length = 140
+
+    def __init__(self):
+        super(ModifierGradientGibberish, self).__init__(None)
+        mod1 = Alphabet.random_modifier()
+        mod2 = None
+        while mod2 is None or mod2 == mod1:
+            mod2 = Alphabet.random_modifier()
+
+        alphabet = Alphabet.random_choice_no_modifiers()
+        self.a1 = [char + mod1 for char in alphabet]
+        self.a2 = [char + mod2 for char in alphabet]
+
+    def words(self, length):
+        a = "".join(x for x in Gradient.gradient(self.a1, self.a2, length/2))
         return a
 
 class GibberishRainbowGradient(GibberishGradient):
@@ -1522,10 +1623,21 @@ class GibberishTable(WanderingMonsterTable):
         # A gradient between two alphabets.
         self.add(GibberishGradient, COMMON)
         self.add(GibberishRainbowGradient, UNCOMMON)
+        self.add(ModifierGradientGibberish, UNCOMMON)
 
         # A mirrored mosaic
         from mosaic import MirroredMosaicGibberish
         self.add(MirroredMosaicGibberish, COMMON)
+
+        # A mirrored mosaic from an untilable alphabet
+        def untilable_mirror():
+            alphabet = None
+            while not alphabet or alphabet in Alphabet.TILABLE_CHARSET_S:
+                alphabet = Alphabet.random_choice_no_modifiers()
+            limited = Alphabet.subset(alphabet)
+            gibberish = MirroredMosaicGibberish(limited)
+            return gibberish
+        self.add(untilable_mirror, UNCOMMON)
 
         # One of the geometric alphabets.
         self.add(self.choice_among_alphabets(Alphabet.GEOMETRIC_ALPHABETS), UNCOMMON)
@@ -1539,12 +1651,19 @@ class GibberishTable(WanderingMonsterTable):
         # A limited subset of one script.
         self.add(Gibberish.limited_vocabulary, COMMON)
 
+        # A less limited subset of one script.
+        self.add(lambda: Gibberish.limited_vocabulary(how_many_characters=3+int(random.gauss(4,2))), UNCOMMON)
+
+        # A limited subset of one script, including whitespace
+        self.add(lambda: Gibberish.limited_vocabulary(include_whitespace=True),
+                 UNCOMMON)
+
         # A mosaic charset.
         self.add(MosaicGibberish, UNCOMMON)
 
-        # Some other kind of gibberish with a single modifier applied
-        # to every character.
-        self.add(lambda: SingleModifierGibberish(self), COMMON)
+        # Some other kind of gibberish with a modifier (chosen from a
+        # small subset) applied to every character.
+        self.add(lambda: LimitedModifierGibberish(self), COMMON)
 
         # Composite gibberish
         self.add(lambda: CompositeGibberish(self), UNCOMMON)
@@ -1554,6 +1673,9 @@ class GibberishTable(WanderingMonsterTable):
 
         # A game board charset.
         self.add(GameBoardGibberish, VERY_RARE)
+
+        # A sampler from a charset.
+        self.add(SamplerGibberish, RARE)
 
         # A shape-based charset
         self.add(self.choice_among_charsets(Alphabet.SHAPE_CHARSET_S), VERY_RARE)
@@ -1569,7 +1691,7 @@ class GibberishTable(WanderingMonsterTable):
                 Alphabet.WEIRD_TWITTER_LATIN_MIXINS)
         self.add(weird_latin_twitter, COMMON)
 
-        # Nothimg but emoji!
+        # Nothing but emoji!
         def nothing_but_emoji():
             self.add(self.choice_among_charsets(Alphabet.EMOJI_S), RARE)
 
@@ -1758,7 +1880,7 @@ if __name__ == '__main__':
     if alphabets:
         gibberish = Gibberish.from_alphabets(alphabets)
     table = GibberishTable()
-    for i in range(100):
+    for i in range(1000):
         if not alphabets:
             gibberish = Gibberish.random(freq)
         print gibberish.tweet().encode("utf8")
